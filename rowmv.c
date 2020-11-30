@@ -1,6 +1,7 @@
 #include "mpi.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 
 #define MATSIZE 8
 
@@ -42,21 +43,22 @@ void matrix_vector_mult(const double **mat, const double *vec, double *result, i
     }
 }
 
-int get_random()
+int get_random(int rank)
 {
+
     int randomNumber = rand() % 100;
-    // printf("%f\n", randomNumber);
+    // printf("%d\n", randomNumber);
     return randomNumber;
 }
 
-void print_arr(double **arr, int row, int col)
+void print_arr(int **arr, int row, int col)
 {
     int i, j;
     for (i = 0; i < row; i++)
     {
         for (j = 0; j < col; j++)
         {
-            printf("%f ", arr[i][j]);
+            printf("%3d ", arr[i][j]);
         }
         printf("\n");
     }
@@ -70,6 +72,16 @@ void print_arr_1d(int *arr, int row)
         printf("%d, ", arr[i]);
     }
     printf("\n");
+}
+
+int **allocarray(int row, int col)
+{
+    int *data = malloc(row * col * sizeof(int));
+    int **arr = malloc(row * sizeof(int *));
+    for (int i = 0; i < row; i++)
+        arr[i] = &(data[i * col]);
+
+    return arr;
 }
 
 int main(int argc, char *argv[])
@@ -96,12 +108,8 @@ int main(int argc, char *argv[])
     //         A[i][j] = get_random();
     // print_arr(A, N, N);
 
-    // MPI_Init(&argc, &argv);
-    // MPI_Comm_rank(MPI_COMM_WORLD, &taskid);
-    // MPI_Comm_size(MPI_COMM_WORLD, &numtasks);
-
     //General declerations
-    int i;
+    int i, j;
     int N = MATSIZE;
     int K, nOverK;
 
@@ -123,35 +131,53 @@ int main(int argc, char *argv[])
 
     K = world_size;
     nOverK = N / K;
-    printf("N/K: %d\n", nOverK);
+
+    int **arr = allocarray(nOverK, N);
+    srand(time(NULL) + taskid);
+    for (i = 0; i < nOverK; i++)
+    {
+        for (j = 0; j < N; j++)
+        {
+            arr[i][j] = get_random(taskid);
+        }
+    }
+
     if (taskid == 0)
     {
-        int *A = calloc(N, sizeof(int));
 
-        for (i = 0; i < N; i++)
-            A[i] = get_random();
-        MPI_Send(A, N, MPI_INT, 1, 100, MPI_COMM_WORLD);
-        free(A);
+        // int *A = calloc(N, sizeof(int));
+        print_arr(arr, nOverK, N);
+
+        // for (i = 0; i < N; i++)
+        //     A[i] = get_random(taskid);
+        // MPI_Send(A, N, MPI_INT, 1, 100, MPI_COMM_WORLD);
+        // free(A);
+        int **A = allocarray(nOverK, N);
+        // printf("Sa\n");
+        // MPI_Gather(arr, 1, MPI_INT, A, 1, MPI_INT, 0,
+        //            MPI_COMM_WORLD);
+        // printf("As\n");
+        // print_arr(A, N, N);
     }
     else if (taskid == 1)
     {
-        int *receivebuffer = calloc(N, sizeof(int));
-        MPI_Status status;
-        MPI_Recv(receivebuffer, N, MPI_INT, 0, 100, MPI_COMM_WORLD, &status);
-        if (status.MPI_ERROR == MPI_SUCCESS)
-        {
-            print_arr_1d(receivebuffer, N);
-        }
-        else
-        {
-            printf("Rank %d encountered problem at line %d of file %s. \
-                    Source:%d Tag:%d Error code:%d\n",
-                   taskid, __LINE__, __FILE__,
-                   status.MPI_SOURCE,
-                   status.MPI_TAG,
-                   status.MPI_ERROR);
-        }
-        free(receivebuffer);
+        // int *receivebuffer = calloc(N, sizeof(int));
+        // MPI_Status status;
+        // MPI_Recv(receivebuffer, N, MPI_INT, 0, 100, MPI_COMM_WORLD, &status);
+        // if (status.MPI_ERROR == MPI_SUCCESS)
+        // {
+        //     print_arr_1d(receivebuffer, N);
+        // }
+        // else
+        // {
+        //     printf("Rank %d encountered problem at line %d of file %s. \
+            //             Source:%d Tag:%d Error code:%d\n",
+        //            taskid, __LINE__, __FILE__,
+        //            status.MPI_SOURCE,
+        //            status.MPI_TAG,
+        //            status.MPI_ERROR);
+        // }
+        // free(receivebuffer);
     }
     else
     {

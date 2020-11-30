@@ -102,16 +102,11 @@ int main(int argc, char *argv[])
     //     b[N][1],
     //     x[N][1];
 
-    // printf("Initializing arrays...\n");
-    // for (i = 0; i < N; i++)
-    //     for (j = 0; j < N; j++)
-    //         A[i][j] = get_random();
-    // print_arr(A, N, N);
-
     //General declerations
     int i, j;
     int N = MATSIZE;
     int K, nOverK;
+    MPI_Status status;
 
     // Initialize the MPI environment
     MPI_Init(NULL, NULL);
@@ -134,50 +129,41 @@ int main(int argc, char *argv[])
 
     int **arr = allocarray(nOverK, N);
     srand(time(NULL) + taskid);
-    for (i = 0; i < nOverK; i++)
-    {
-        for (j = 0; j < N; j++)
-        {
-            arr[i][j] = get_random(taskid);
-        }
-    }
 
     if (taskid == 0)
     {
-
-        // int *A = calloc(N, sizeof(int));
-        print_arr(arr, nOverK, N);
-
-        // for (i = 0; i < N; i++)
-        //     A[i] = get_random(taskid);
-        // MPI_Send(A, N, MPI_INT, 1, 100, MPI_COMM_WORLD);
-        // free(A);
         int **A = allocarray(nOverK, N);
-        // printf("Sa\n");
-        // MPI_Gather(arr, 1, MPI_INT, A, 1, MPI_INT, 0,
-        //            MPI_COMM_WORLD);
-        // printf("As\n");
-        // print_arr(A, N, N);
+        for (i = 0; i < nOverK; i++)
+        {
+            for (j = 0; j < N; j++)
+            {
+                arr[i][j] = get_random(taskid);
+            }
+        }
+
+        MPI_Send(&(arr[0][0]), N * nOverK, MPI_INT, 1, 111, MPI_COMM_WORLD);
+
+        free(arr[0]);
+        free(arr);
     }
     else if (taskid == 1)
     {
-        // int *receivebuffer = calloc(N, sizeof(int));
-        // MPI_Status status;
-        // MPI_Recv(receivebuffer, N, MPI_INT, 0, 100, MPI_COMM_WORLD, &status);
-        // if (status.MPI_ERROR == MPI_SUCCESS)
-        // {
-        //     print_arr_1d(receivebuffer, N);
-        // }
-        // else
-        // {
-        //     printf("Rank %d encountered problem at line %d of file %s. \
-            //             Source:%d Tag:%d Error code:%d\n",
-        //            taskid, __LINE__, __FILE__,
-        //            status.MPI_SOURCE,
-        //            status.MPI_TAG,
-        //            status.MPI_ERROR);
-        // }
-        // free(receivebuffer);
+        int **A = allocarray(nOverK, N);
+        MPI_Recv(&(A[0][0]), nOverK * N, MPI_INT, 0, 111, MPI_COMM_WORLD, &status);
+        if (status.MPI_ERROR == MPI_SUCCESS)
+        {
+            print_arr(A, nOverK, N);
+        }
+        else
+        {
+            printf("Rank %d encountered problem at line %d of file %s. \
+                        Source:%d Tag:%d Error code:%d\n",
+                   taskid, __LINE__, __FILE__,
+                   status.MPI_SOURCE,
+                   status.MPI_TAG,
+                   status.MPI_ERROR);
+        }
+        free(A);
     }
     else
     {

@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <time.h>
 
-#define MATSIZE 8
+#define MATSIZE 4
 
 int vectors_dot_prod(const int *x, const int *y, int n)
 {
@@ -119,22 +119,6 @@ int *fullfillArrayWithRandomNumbers1D(int *arr, int row)
 
 int main(int argc, char *argv[])
 {
-    // int numtasks,              /* number of tasks in partition */
-    //     taskid,                /* a task identifier */
-    //     numworkers,            /* number of worker tasks */
-    //     source,                /* task id of message source */
-    //     dest,                  /* task id of message destination */
-    //     mtype,                 /* message type */
-    //     rows,                  /* rows of matrix A sent to each worker */
-    //     averow, extra, offset, /* used to determine rows sent to each worker */
-    //     i, j, k, rc;           /* misc */
-    // int tag = 4;
-    // MPI_Status status;
-    // int N = MATSIZE;
-    // int *A,
-    //     b[N][1],
-    //     x[N][1];
-
     //General declerations
     int i, j;
     int N = MATSIZE;
@@ -176,59 +160,20 @@ int main(int argc, char *argv[])
     X_partial = fullfillArrayWithRandomNumbers1D(X_partial, nOverK);
 
     //ALLGATHER FOR VECTOR
-    // int *datain, *dataout;
-    // datain = (int *)malloc(N * world_size * sizeof(int));
-    // dataout = (int *)malloc(N * world_size * sizeof(int));
-    // for (int i = 0; i < n * size; i++)
-    //     datain[i] = 9;
-    // for (int i = 0; i < n; i++)
-    //     datain[rank * n + i] = rank;
+    int *gatherInput, *B_complete;
+    gatherInput = (int *)malloc(N * sizeof(int));
+    B_complete = (int *)malloc(N * sizeof(int));
+    for (int i = 0; i < N; i++)
+        gatherInput[i] = -1;
+    for (int i = 0; i < nOverK; i++)
+        gatherInput[taskid * nOverK + i] = B_partial[i];
 
-    // if (rank == 0)
-    //     printf("Before:\n");
-    // printdata(size, rank, n, datain);
+    MPI_Allgather(&(gatherInput[taskid * nOverK]), nOverK, MPI_INT, B_complete, nOverK, MPI_INT, MPI_COMM_WORLD);
+    print_arr(A_partial, nOverK, N);
+    print_arr_1d(B_complete, N);
+    matrix_vector_mult(A_partial, B_complete, X_partial, nOverK, N);
 
-    // MPI_Allgather(&(datain[rank * n]), n, MPI_INT, dataout, n, MPI_INT, MPI_COMM_WORLD);
-
-    /*      NOT USED FOR NOW
-    int **totalArr = NULL;
-    if (taskid == 0)
-    {
-        totalArr = allocarray(N, N);
-    } 
-    MPI_Gather((arr), N * nOverK, MPI_INT, (totalArr), N * N, MPI_INT, 0,
-               MPI_COMM_WORLD);
-    free(arr[0]);
-    free(arr); */
-
-    if (taskid == 0)
-    {
-        // MPI_Send(&(arr[0][0]), N * nOverK, MPI_INT, 1, 111, MPI_COMM_WORLD);
-    }
-    else if (taskid == 1)
-    {
-        // int **A = allocarray(nOverK, N);
-        // MPI_Recv(&(A[0][0]), nOverK * N, MPI_INT, 0, 111, MPI_COMM_WORLD, &status);
-        // if (status.MPI_ERROR == MPI_SUCCESS)
-        // {
-        //     print_arr(A, nOverK, N);
-        // }
-        // else
-        // {
-        //     printf("Rank %d encountered problem at line %d of file %s. \
-        //                 Source:%d Tag:%d Error code:%d\n",
-        //            taskid, __LINE__, __FILE__,
-        //            status.MPI_SOURCE,
-        //            status.MPI_TAG,
-        //            status.MPI_ERROR);
-        // }
-        // free(A);
-    }
-    else
-    {
-        /* code */
-    }
-
+    print_arr_1d(X_partial, nOverK);
     // Finalize the MPI environment.
     MPI_Finalize();
     return 0;

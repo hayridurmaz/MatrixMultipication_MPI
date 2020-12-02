@@ -3,7 +3,9 @@
 #include <stdlib.h>
 #include <time.h>
 
-#define MATSIZE 4
+#define MATSIZE 2000
+
+static size_t totalMemUsage = 0;
 
 int vectors_dot_prod(const int *x, const int *y, int n)
 {
@@ -69,8 +71,11 @@ int **allocarray(int row, int col)
     for (int i = 0; i < row; i++)
     {
         array[i] = malloc(col * sizeof(int));
+        totalMemUsage += col * sizeof(int);
         // printf("col=%d - Size of array1[%d]=%d (%d)\n", col, i, sizeof(array1[i]), ((int *)(col * sizeof(int))));
     }
+    totalMemUsage += row * sizeof(int *);
+
     return array;
 }
 
@@ -102,6 +107,7 @@ void print_arr_1d(int *arr, int row)
 int *allocarray1D(int row)
 {
     int *array = malloc(row * sizeof(int *));
+    totalMemUsage += row * sizeof(int *);
     return array;
 }
 
@@ -169,11 +175,23 @@ int main(int argc, char *argv[])
         gatherInput[taskid * nOverK + i] = B_partial[i];
 
     MPI_Allgather(&(gatherInput[taskid * nOverK]), nOverK, MPI_INT, B_complete, nOverK, MPI_INT, MPI_COMM_WORLD);
-    print_arr(A_partial, nOverK, N);
-    print_arr_1d(B_complete, N);
-    matrix_vector_mult(A_partial, B_complete, X_partial, nOverK, N);
+    // print_arr(A_partial, nOverK, N);
+    // print_arr_1d(B_complete, N);
 
-    print_arr_1d(X_partial, nOverK);
+    MPI_Barrier(MPI_COMM_WORLD);
+    double time_start = MPI_Wtime();
+
+    matrix_vector_mult(A_partial, B_complete, X_partial, nOverK, N);
+    MPI_Barrier(MPI_COMM_WORLD);
+    double time_end = MPI_Wtime();
+    double time = time_end - time_start;
+
+    if (taskid == 0)
+    {
+        totalMemUsage = totalMemUsage / (1024 * 1024);
+        printf("%6d %6d %6f %zu\n", N, world_size, time, totalMemUsage);
+    }
+    // print_arr_1d(X_partial, nOverK);
     // Finalize the MPI environment.
     MPI_Finalize();
     return 0;

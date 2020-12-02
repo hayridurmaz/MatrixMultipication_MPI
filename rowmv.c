@@ -5,9 +5,9 @@
 
 #define MATSIZE 8
 
-double vectors_dot_prod(const double *x, const double *y, int n)
+int vectors_dot_prod(const int *x, const int *y, int n)
 {
-    double res = 0.0;
+    int res = 0.0;
     int i;
     for (i = 0; i < n; i++)
     {
@@ -16,9 +16,9 @@ double vectors_dot_prod(const double *x, const double *y, int n)
     return res;
 }
 
-double vectors_dot_prod2(const double *x, const double *y, int n)
+int vectors_dot_prod2(const int *x, const int *y, int n)
 {
-    double res = 0.0;
+    int res = 0.0;
     int i = 0;
     for (; i <= n - 4; i += 4)
     {
@@ -34,7 +34,7 @@ double vectors_dot_prod2(const double *x, const double *y, int n)
     return res;
 }
 
-void matrix_vector_mult(const double **mat, const double *vec, double *result, int rows, int cols)
+void matrix_vector_mult(const int **mat, const int *vec, int *result, int rows, int cols)
 { // in matrix form: result = mat * vec;
     int i;
     for (i = 0; i < rows; i++)
@@ -45,7 +45,6 @@ void matrix_vector_mult(const double **mat, const double *vec, double *result, i
 
 int get_random()
 {
-
     int randomNumber = rand() % 100;
     // printf("%d\n", randomNumber);
     return randomNumber;
@@ -62,16 +61,6 @@ void print_arr(int **arr, int row, int col)
         }
         printf("\n");
     }
-}
-
-void print_arr_1d(int *arr, int row)
-{
-    int i, j;
-    for (i = 0; i < row; i++)
-    {
-        printf("%d, ", arr[i]);
-    }
-    printf("\n");
 }
 
 int **allocarray(int row, int col)
@@ -100,6 +89,34 @@ int **fullfillArrayWithRandomNumbers(int **arr, int row, int col)
     return arr;
 }
 
+void print_arr_1d(int *arr, int row)
+{
+    int i, j;
+    for (i = 0; i < row; i++)
+    {
+        printf("%d, ", arr[i]);
+    }
+    printf("\n");
+}
+
+int *allocarray1D(int row)
+{
+    int *array = malloc(row * sizeof(int *));
+    return array;
+}
+
+int *fullfillArrayWithRandomNumbers1D(int *arr, int row)
+{
+    /*
+    * Fulfilling the array with random numbers 
+    * */
+    for (int i = 0; i < row; i++)
+    {
+        arr[i] = get_random();
+    }
+    return arr;
+}
+
 int main(int argc, char *argv[])
 {
     // int numtasks,              /* number of tasks in partition */
@@ -114,7 +131,7 @@ int main(int argc, char *argv[])
     // int tag = 4;
     // MPI_Status status;
     // int N = MATSIZE;
-    // double *A,
+    // int *A,
     //     b[N][1],
     //     x[N][1];
 
@@ -152,13 +169,27 @@ int main(int argc, char *argv[])
     // print_arr(A_partial, nOverK, N);
 
     // Every proccess creates its part of B and X vectors. (Part 2)
-    int **B_partial = allocarray(nOverK, 1);
-    B_partial = fullfillArrayWithRandomNumbers(B_partial, nOverK, 1);
+    int *B_partial = allocarray1D(nOverK);
+    B_partial = fullfillArrayWithRandomNumbers1D(B_partial, nOverK);
 
-    int **X_partial = allocarray(nOverK, 1);
-    X_partial = fullfillArrayWithRandomNumbers(X_partial, nOverK, 1);
+    int *X_partial = allocarray1D(nOverK);
+    X_partial = fullfillArrayWithRandomNumbers1D(X_partial, nOverK);
 
-    
+    //ALLGATHER FOR VECTOR
+    // int *datain, *dataout;
+    // datain = (int *)malloc(N * world_size * sizeof(int));
+    // dataout = (int *)malloc(N * world_size * sizeof(int));
+    // for (int i = 0; i < n * size; i++)
+    //     datain[i] = 9;
+    // for (int i = 0; i < n; i++)
+    //     datain[rank * n + i] = rank;
+
+    // if (rank == 0)
+    //     printf("Before:\n");
+    // printdata(size, rank, n, datain);
+
+    // MPI_Allgather(&(datain[rank * n]), n, MPI_INT, dataout, n, MPI_INT, MPI_COMM_WORLD);
+
     /*      NOT USED FOR NOW
     int **totalArr = NULL;
     if (taskid == 0)

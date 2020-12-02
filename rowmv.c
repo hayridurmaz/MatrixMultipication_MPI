@@ -145,24 +145,33 @@ int main(int argc, char *argv[])
     nOverK = N / K;
     srand(time(NULL) + taskid);
 
-    // Every proccess creates its part of matrix.
-    int **partial_matrix = allocarray(nOverK, N);
+    // Every proccess creates its part of matrix. (Part 1)
+    int **A_partial = allocarray(nOverK, N);
 
-    partial_matrix = fullfillArrayWithRandomNumbers(partial_matrix, nOverK, N);
-    print_arr(partial_matrix, nOverK, N);
+    A_partial = fullfillArrayWithRandomNumbers(A_partial, nOverK, N);
+    // print_arr(A_partial, nOverK, N);
 
+    // Every proccess creates its part of B and X vectors. (Part 2)
+    int **B_partial = allocarray(nOverK, 1);
+    B_partial = fullfillArrayWithRandomNumbers(B_partial, nOverK, 1);
+
+    int **X_partial = allocarray(nOverK, 1);
+    X_partial = fullfillArrayWithRandomNumbers(X_partial, nOverK, 1);
+
+    
+    /*      NOT USED FOR NOW
     int **totalArr = NULL;
     if (taskid == 0)
     {
         totalArr = allocarray(N, N);
-    }
-    // MPI_Gather((arr), N * nOverK, MPI_INT, (totalArr), N * N, MPI_INT, 0,
-    //            MPI_COMM_WORLD);
-    // free(arr[0]);
-    // free(arr);
+    } 
+    MPI_Gather((arr), N * nOverK, MPI_INT, (totalArr), N * N, MPI_INT, 0,
+               MPI_COMM_WORLD);
+    free(arr[0]);
+    free(arr); */
+
     if (taskid == 0)
     {
-        print_arr(totalArr, N, N);
         // MPI_Send(&(arr[0][0]), N * nOverK, MPI_INT, 1, 111, MPI_COMM_WORLD);
     }
     else if (taskid == 1)

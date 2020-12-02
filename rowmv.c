@@ -7,7 +7,7 @@
 
 static size_t totalMemUsage = 0;
 
-int vectors_dot_prod(const int *x, const int *y, int n)
+int vectors_dot_prod(int *x, int *y, int n)
 {
     int res = 0.0;
     int i;
@@ -18,7 +18,7 @@ int vectors_dot_prod(const int *x, const int *y, int n)
     return res;
 }
 
-int vectors_dot_prod2(const int *x, const int *y, int n)
+int vectors_dot_prod2(int *x, int *y, int n)
 {
     int res = 0.0;
     int i = 0;
@@ -36,7 +36,7 @@ int vectors_dot_prod2(const int *x, const int *y, int n)
     return res;
 }
 
-void matrix_vector_mult(const int **mat, const int *vec, int *result, int rows, int cols)
+void matrix_vector_mult(int **mat, int *vec, int *result, int rows, int cols)
 { // in matrix form: result = mat * vec;
     int i;
     for (i = 0; i < rows; i++)

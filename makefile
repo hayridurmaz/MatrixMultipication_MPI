@@ -1,2 +1,2 @@
 make: rowmv.c
-	mpicc -fopenmp -o rowmv rowmv.c
+	mpicc -fopenmp -g -ggdb -o rowmv rowmv.c

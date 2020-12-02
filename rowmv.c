@@ -43,7 +43,7 @@ void matrix_vector_mult(const double **mat, const double *vec, double *result, i
     }
 }
 
-int get_random(int rank)
+int get_random()
 {
 
     int randomNumber = rand() % 100;
@@ -76,11 +76,27 @@ void print_arr_1d(int *arr, int row)
 
 int **allocarray(int row, int col)
 {
-    int *data = malloc(row * col * sizeof(int));
-    int **arr = malloc(row * sizeof(int *));
+    int **array = malloc(row * sizeof(int *));
     for (int i = 0; i < row; i++)
-        arr[i] = &(data[i * col]);
+    {
+        array[i] = malloc(col * sizeof(int));
+        // printf("col=%d - Size of array1[%d]=%d (%d)\n", col, i, sizeof(array1[i]), ((int *)(col * sizeof(int))));
+    }
+    return array;
+}
 
+int **fullfillArrayWithRandomNumbers(int **arr, int row, int col)
+{
+    /*
+    * Fulfilling the array with random numbers 
+    * */
+    for (int i = 0; i < row; i++)
+    {
+        for (int j = 0; j < col; j++)
+        {
+            arr[i][j] = get_random();
+        }
+    }
     return arr;
 }
 
@@ -124,46 +140,49 @@ int main(int argc, char *argv[])
     int name_len;
     MPI_Get_processor_name(processor_name, &name_len);
 
+    // Proccess depended inits
     K = world_size;
     nOverK = N / K;
-
-    int **arr = allocarray(nOverK, N);
     srand(time(NULL) + taskid);
 
+    // Every proccess creates its part of matrix.
+    int **partial_matrix = allocarray(nOverK, N);
+
+    partial_matrix = fullfillArrayWithRandomNumbers(partial_matrix, nOverK, N);
+    print_arr(partial_matrix, nOverK, N);
+
+    int **totalArr = NULL;
     if (taskid == 0)
     {
-        int **A = allocarray(nOverK, N);
-        for (i = 0; i < nOverK; i++)
-        {
-            for (j = 0; j < N; j++)
-            {
-                arr[i][j] = get_random(taskid);
-            }
-        }
-
-        MPI_Send(&(arr[0][0]), N * nOverK, MPI_INT, 1, 111, MPI_COMM_WORLD);
-
-        free(arr[0]);
-        free(arr);
+        totalArr = allocarray(N, N);
+    }
+    // MPI_Gather((arr), N * nOverK, MPI_INT, (totalArr), N * N, MPI_INT, 0,
+    //            MPI_COMM_WORLD);
+    // free(arr[0]);
+    // free(arr);
+    if (taskid == 0)
+    {
+        print_arr(totalArr, N, N);
+        // MPI_Send(&(arr[0][0]), N * nOverK, MPI_INT, 1, 111, MPI_COMM_WORLD);
     }
     else if (taskid == 1)
     {
-        int **A = allocarray(nOverK, N);
-        MPI_Recv(&(A[0][0]), nOverK * N, MPI_INT, 0, 111, MPI_COMM_WORLD, &status);
-        if (status.MPI_ERROR == MPI_SUCCESS)
-        {
-            print_arr(A, nOverK, N);
-        }
-        else
-        {
-            printf("Rank %d encountered problem at line %d of file %s. \
-                        Source:%d Tag:%d Error code:%d\n",
-                   taskid, __LINE__, __FILE__,
-                   status.MPI_SOURCE,
-                   status.MPI_TAG,
-                   status.MPI_ERROR);
-        }
-        free(A);
+        // int **A = allocarray(nOverK, N);
+        // MPI_Recv(&(A[0][0]), nOverK * N, MPI_INT, 0, 111, MPI_COMM_WORLD, &status);
+        // if (status.MPI_ERROR == MPI_SUCCESS)
+        // {
+        //     print_arr(A, nOverK, N);
+        // }
+        // else
+        // {
+        //     printf("Rank %d encountered problem at line %d of file %s. \
+        //                 Source:%d Tag:%d Error code:%d\n",
+        //            taskid, __LINE__, __FILE__,
+        //            status.MPI_SOURCE,
+        //            status.MPI_TAG,
+        //            status.MPI_ERROR);
+        // }
+        // free(A);
     }
     else
     {

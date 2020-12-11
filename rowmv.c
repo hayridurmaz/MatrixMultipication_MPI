@@ -48,56 +48,29 @@ void matrix_vector_mult(double **mat, double *vec, double *result, int rows, int
 
 double get_random()
 {
-    double randomNumber = rand() / 100;
+
+    double range = 1000;
+    double div = RAND_MAX / range;
+    double randomNumber = (rand() / div);
     // printf("%d\n", randomNumber);
     return randomNumber;
 }
 
-void print_arr(double **arr, int row, int col)
+void print_2d_arr(double *arr, int row, int col)
 {
-    size_t i, j;
+    size_t i, j, index;
+
     for (i = 0; i < row; i++)
     {
         for (j = 0; j < col; j++)
         {
-            printf("%3f ", arr[i][j]);
+            index = i * col + j;
+            printf("%3f ", arr[index]);
         }
         printf("\n");
     }
 }
-
-double **allocarray(int row, int col)
-{
-    double **array = malloc(row * sizeof(double *));
-    size_t i, j;
-    for (i = 0; i < row; i++)
-    {
-        array[i] = malloc(col * sizeof(double));
-        totalMemUsage += col * sizeof(double);
-        // printf("col=%d - Size of array1[%d]=%d (%d)\n", col, i, sizeof(array1[i]), ((int *)(col * sizeof(int))));
-    }
-    totalMemUsage += row * sizeof(double *);
-
-    return array;
-}
-
-int **fullfillArrayWithRandomNumbers(double **arr, int row, int col)
-{
-    /*
-    * Fulfilling the array with random numbers 
-    * */
-    size_t i, j;
-    for (i = 0; i < row; i++)
-    {
-        for (j = 0; j < col; j++)
-        {
-            arr[i][j] = get_random();
-        }
-    }
-    return 0;
-}
-
-void print_arr_1d(double *arr, int row)
+void print_1d_arr(double *arr, int row)
 {
     size_t i, j;
     for (i = 0; i < row; i++)
@@ -107,24 +80,24 @@ void print_arr_1d(double *arr, int row)
     printf("\n");
 }
 
+int **fullfillArrayWithRandomNumbers(double *arr, int n)
+{
+    /*
+    * Fulfilling the array with random numbers 
+    * */
+    size_t i;
+    for (i = 0; i < n; i++)
+    {
+        arr[i] = get_random();
+    }
+    return 0;
+}
+
 double *allocarray1D(int size)
 {
     double *array = calloc(size, sizeof(double));
     totalMemUsage += size * sizeof(int);
     return array;
-}
-
-int *fullfillArrayWithRandomNumbers1D(double *arr, int row)
-{
-    /*
-    * Fulfilling the array with random numbers 
-    * */
-    size_t i, j;
-    for (i = 0; i < row; i++)
-    {
-        arr[i] = get_random();
-    }
-    return 0;
 }
 
 int ParallelRowMatrixVectorMultiply(int n, double *a, double *b, double *x, MPI_Comm comm)
@@ -171,7 +144,6 @@ int main(int argc, char *argv[])
 {
     // Global declerations
     size_t i, j;
-    int K;
     MPI_Status status;
 
     // Initialize the MPI environment
@@ -212,7 +184,16 @@ int main(int argc, char *argv[])
         return 0;
     }
 
-    // TODO: matrix initialization
+    fullfillArrayWithRandomNumbers(a, n * n);
+    fullfillArrayWithRandomNumbers(b, n);
+    if (taskid == 0)
+    {
+        printf("A:\n");
+        print_2d_arr(a, n, n);
+        printf("b:\n");
+        print_1d_arr(b, n);
+    }
+
     MPI_Barrier(MPI_COMM_WORLD);
     double time_start = MPI_Wtime();
     // TODO: scatter matrix A

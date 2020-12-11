@@ -7,6 +7,10 @@
         "ranges": "c",
         "initializer_list": "c",
         "utility": "c",
-        "valarray": "c"
+        "valarray": "c",
+        "chrono": "c",
+        "random": "c",
+        "limits": "c",
+        "algorithm": "c"
     }
 }

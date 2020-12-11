@@ -169,9 +169,36 @@ int SequentialMatrixMultiply(int n, double *a, double *b, double *x)
 
 int main(int argc, char *argv[])
 {
-    MPI_Init(NULL, NULL);
-    // TODO: matrix allocation
-    int n = 10; //TODO: Take it from arg
+    // Global declerations
+    size_t i, j;
+    int K;
+    MPI_Status status;
+
+    // Initialize the MPI environment
+    MPI_Init(&argc, &argv);
+
+    // Get the number of processes
+    int world_size;
+    MPI_Comm_size(MPI_COMM_WORLD, &world_size);
+
+    // Get the rank of the process
+    int taskid;
+    MPI_Comm_rank(MPI_COMM_WORLD, &taskid);
+
+    // Get the name of the processor
+    char processor_name[MPI_MAX_PROCESSOR_NAME];
+    int name_len;
+    MPI_Get_processor_name(processor_name, &name_len);
+
+    if (argc != 2)
+    {
+        if (taskid == 0)
+            printf("Usage: %s <N>\n", argv[0]);
+        MPI_Finalize();
+        return 0;
+    }
+    int n = atoi(argv[1]);
+
     double *a = allocarray1D(n * n);
     double *b = allocarray1D(n);
     double *x = allocarray1D(n);
@@ -179,10 +206,10 @@ int main(int argc, char *argv[])
 
     if (a == NULL || b == NULL || x == NULL || xseq == NULL)
     {
-        // if (myrank == 0)
-        //     printf("Allocation failed\n");
-        // MPI_Finalize();
-        // return 0;
+        if (taskid == 0)
+            printf("Allocation failed\n");
+        MPI_Finalize();
+        return 0;
     }
 
     // TODO: matrix initialization

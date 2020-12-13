@@ -228,7 +228,7 @@ int main(int argc, char *argv[])
 
     MPI_Barrier(MPI_COMM_WORLD);
     double time_start = MPI_Wtime();
-    ParallelRowMatrixVectorMultiply(n, a_partial, b, x_partial, MPI_COMM_WORLD);
+    ParallelRowMatrixVectorMultiply_WithoutAllgather(n, a_partial, b, x_partial, MPI_COMM_WORLD);
     double time_end = MPI_Wtime();
     double parallel_exec_time = time_end - time_start;
 
@@ -242,18 +242,19 @@ int main(int argc, char *argv[])
         double time_start_openmp = omp_get_wtime();
 
         double *diff_vector = allocarray1D(n);
-        double l2_norm = 0;
+        long double l2_norm = 0;
 #pragma omp parallel
         {
             for (i = 0; i < n; i++)
             {
                 double local_diff = x[i] - xseq[i];
                 diff_vector[i] = local_diff;
+                printf("");
                 l2_norm += (local_diff * local_diff);
             }
         }
         l2_norm = sqrt(l2_norm);
-        printf("L2_Norm: %f\n", l2_norm);
+        printf("L2_Norm: %Lf\n", l2_norm);
         double time_end_openmp = omp_get_wtime();
         double openmp_exec_time = time_end_openmp - time_start_openmp;
         print_1d_arr(diff_vector, n);

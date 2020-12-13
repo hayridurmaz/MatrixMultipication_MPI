@@ -187,7 +187,7 @@ int main(int argc, char *argv[])
         MPI_Finalize();
         return 0;
     }
-    // İşlem 0, A matrisinin hepsini üretip diğer işlemlere satır bloklarını dağıtacak.
+    // Process 0 creates A matrix.
     if (taskid == 0)
     {
         fullfillArrayWithRandomNumbers(a, n * n);
@@ -205,8 +205,9 @@ int main(int argc, char *argv[])
     double time_start = MPI_Wtime();
     ParallelRowMatrixVectorMultiply(n, a_partial, b, x_partial, MPI_COMM_WORLD);
     double time_end = MPI_Wtime();
-    double time = time_end - time_start;
+    double parallel_exec_time = time_end - time_start;
 
+    // Process 0 gathers x_partials to create x
     MPI_Gather(x_partial, nOverK, MPI_DOUBLE, x, nOverK, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
     SequentialMatrixMultiply(n, a, b, xseq);
@@ -215,7 +216,7 @@ int main(int argc, char *argv[])
     //TODO: Use, openmp parallel
     //#pragma omp parallel
     double time_end_openmp = omp_get_wtime();
-    double time_openmp = time_end_openmp - time_start_openmp;
+    double openmp_exec_time = time_end_openmp - time_start_openmp;
     // print matrix size, number of processors, number of threads, time, time_openmp, L2 norm of difference of x and xseq (use %.12e while printing norm)
 
     MPI_Finalize();

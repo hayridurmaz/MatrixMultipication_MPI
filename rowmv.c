@@ -169,8 +169,8 @@ int SequentialMatrixMultiply(int n, double *a, double *b, double *x)
 int main(int argc, char *argv[])
 {
     // Global declerations
-    size_t i, j;
-    MPI_Status status;
+    size_t i;
+    // MPI_Status status;
 
     // Initialize the MPI environment
     MPI_Init(&argc, &argv);
@@ -241,24 +241,24 @@ int main(int argc, char *argv[])
         // check difference between x and xseq using OpenMP
         double time_start_openmp = omp_get_wtime();
 
+        double l2_norm = 0;
+        size_t numberOfThreads = 0;
         double *diff_vector = allocarray1D(n);
-        long double l2_norm = 0;
 #pragma omp parallel
         {
+            numberOfThreads = omp_get_num_threads();
             for (i = 0; i < n; i++)
             {
                 double local_diff = x[i] - xseq[i];
                 diff_vector[i] = local_diff;
-                printf("");
                 l2_norm += (local_diff * local_diff);
             }
         }
         l2_norm = sqrt(l2_norm);
-        printf("L2_Norm: %Lf\n", l2_norm);
         double time_end_openmp = omp_get_wtime();
         double openmp_exec_time = time_end_openmp - time_start_openmp;
-        print_1d_arr(diff_vector, n);
         // print matrix size, number of processors, number of threads, time, time_openmp, L2 norm of difference of x and xseq (use %.12e while printing norm)
+        printf("%d %d %ld %f %f %.12e\n", n, world_size, numberOfThreads, parallel_exec_time, openmp_exec_time, l2_norm);
     }
     MPI_Finalize();
     return 0;

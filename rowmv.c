@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <omp.h>
+#include <math.h>
 
 #define MATSIZE 2000
 
@@ -241,13 +242,18 @@ int main(int argc, char *argv[])
         double time_start_openmp = omp_get_wtime();
 
         double *diff_vector = allocarray1D(n);
+        double l2_norm = 0;
 #pragma omp parallel
         {
             for (i = 0; i < n; i++)
             {
-                diff_vector[i] = x[i] - xseq[i];
+                double local_diff = x[i] - xseq[i];
+                diff_vector[i] = local_diff;
+                l2_norm += (local_diff * local_diff);
             }
         }
+        l2_norm = sqrt(l2_norm);
+        printf("L2_Norm: %f\n", l2_norm);
         double time_end_openmp = omp_get_wtime();
         double openmp_exec_time = time_end_openmp - time_start_openmp;
         print_1d_arr(diff_vector, n);

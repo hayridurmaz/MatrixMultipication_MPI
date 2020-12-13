@@ -72,7 +72,7 @@ void print_2d_arr(double *arr, int row, int col)
 }
 void print_1d_arr(double *arr, int row)
 {
-    size_t i, j;
+    size_t i;
     for (i = 0; i < row; i++)
     {
         printf("%f, ", arr[i]);
@@ -106,7 +106,6 @@ int ParallelRowMatrixVectorMultiply(int n, double *a, double *b, double *x, MPI_
     int nlocal;
     double *fb;
     int npes, myrank;
-    MPI_Status status;
     MPI_Comm_size(comm, &npes);
     MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
     fb = (double *)malloc(n * sizeof(double));
@@ -169,12 +168,15 @@ int main(int argc, char *argv[])
         MPI_Finalize();
         return 0;
     }
+    srand(time(NULL) + taskid);
     int n = atoi(argv[1]);
 
     double *a = allocarray1D(n * n);
     double *b = allocarray1D(n);
     double *x = allocarray1D(n);
     double *xseq = allocarray1D(n);
+
+    double *a_partial = allocarray1D(n * n / world_size);
 
     if (a == NULL || b == NULL || x == NULL || xseq == NULL)
     {
@@ -183,15 +185,26 @@ int main(int argc, char *argv[])
         MPI_Finalize();
         return 0;
     }
-
-    fullfillArrayWithRandomNumbers(a, n * n);
-    fullfillArrayWithRandomNumbers(b, n);
+    // İşlem 0, A matrisinin hepsini üretip diğer işlemlere satır bloklarını dağıtacak.
     if (taskid == 0)
     {
+        fullfillArrayWithRandomNumbers(a, n * n);
         printf("A:\n");
         print_2d_arr(a, n, n);
-        printf("b:\n");
-        print_1d_arr(b, n);
+        // TODO: Scatter
+
+        // Process 0 produces the b
+        fullfillArrayWithRandomNumbers(b, n);
+    }
+    // Process 0 sends b to everyone
+
+    MPI_Scatter(a, n * n / world_size, MPI_DOUBLE, a_partial, n * n / world_size, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    MPI_Bcast(b, n, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    MPI_Barrier(MPI_COMM_WORLD);
+    if (taskid == 1)
+    {
+        printf("a_partial:\n");
+        print_2d_arr(a, n / world_size, n);
     }
 
     MPI_Barrier(MPI_COMM_WORLD);

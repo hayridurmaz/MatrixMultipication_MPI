@@ -124,6 +124,31 @@ int ParallelRowMatrixVectorMultiply(int n, double *a, double *b, double *x, MPI_
     return 0;
 }
 
+int ParallelRowMatrixVectorMultiply_WithoutAllgather(int n, double *a, double *b, double *x, MPI_Comm comm)
+{
+    size_t i, j;
+    int nlocal;
+    // double *fb;
+    int npes, myrank;
+    MPI_Comm_size(comm, &npes);
+    MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
+    // fb = (double *)malloc(n * sizeof(double));
+    nlocal = n / npes;
+    // MPI_Allgather(b, nlocal, MPI_DOUBLE, fb, nlocal, MPI_DOUBLE, comm);
+    for (i = 0; i < nlocal; i++)
+    {
+        x[i] = 0.0;
+        for (j = 0; j < n; j++)
+        {
+            size_t index = i * n + j;
+            // printf("%f x %f\n", a[index], b[j]);
+            x[i] += a[index] * b[j];
+        }
+    }
+    // free(b);
+    return 0;
+}
+
 int SequentialMatrixMultiply(int n, double *a, double *b, double *x)
 {
     size_t i, j;
@@ -133,6 +158,7 @@ int SequentialMatrixMultiply(int n, double *a, double *b, double *x)
         for (j = 0; j < n; j++)
         {
             size_t index = i * n + j;
+            // printf("%f x %f\n", a[index], b[j]);
             x[i] += a[index] * b[j];
         }
     }
@@ -191,8 +217,6 @@ int main(int argc, char *argv[])
     if (taskid == 0)
     {
         fullfillArrayWithRandomNumbers(a, n * n);
-        printf("A:\n");
-        print_2d_arr(a, n, n);
         // Process 0 produces the b
         fullfillArrayWithRandomNumbers(b, n);
     }
@@ -210,15 +234,25 @@ int main(int argc, char *argv[])
     // Process 0 gathers x_partials to create x
     MPI_Gather(x_partial, nOverK, MPI_DOUBLE, x, nOverK, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
-    SequentialMatrixMultiply(n, a, b, xseq);
-    // check difference between x and xseq using OpenMP
-    double time_start_openmp = omp_get_wtime();
-    //TODO: Use, openmp parallel
-    //#pragma omp parallel
-    double time_end_openmp = omp_get_wtime();
-    double openmp_exec_time = time_end_openmp - time_start_openmp;
-    // print matrix size, number of processors, number of threads, time, time_openmp, L2 norm of difference of x and xseq (use %.12e while printing norm)
+    if (taskid == 0)
+    {
+        SequentialMatrixMultiply(n, a, b, xseq);
+        // check difference between x and xseq using OpenMP
+        double time_start_openmp = omp_get_wtime();
 
+        double *diff_vector = allocarray1D(n);
+#pragma omp parallel
+        {
+            for (i = 0; i < n; i++)
+            {
+                diff_vector[i] = x[i] - xseq[i];
+            }
+        }
+        double time_end_openmp = omp_get_wtime();
+        double openmp_exec_time = time_end_openmp - time_start_openmp;
+        print_1d_arr(diff_vector, n);
+        // print matrix size, number of processors, number of threads, time, time_openmp, L2 norm of difference of x and xseq (use %.12e while printing norm)
+    }
     MPI_Finalize();
     return 0;
 }

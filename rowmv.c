@@ -174,11 +174,12 @@ int main(int argc, char *argv[])
     double *a = allocarray1D(n * n);
     double *b = allocarray1D(n);
     double *x = allocarray1D(n);
+    double *x_partial = allocarray1D(n / world_size);
     double *xseq = allocarray1D(n);
 
     double *a_partial = allocarray1D(n * n / world_size);
 
-    if (a == NULL || b == NULL || x == NULL || xseq == NULL)
+    if (a == NULL || b == NULL || x == NULL || xseq == NULL || x_partial == NULL)
     {
         if (taskid == 0)
             printf("Allocation failed\n");
@@ -191,26 +192,18 @@ int main(int argc, char *argv[])
         fullfillArrayWithRandomNumbers(a, n * n);
         printf("A:\n");
         print_2d_arr(a, n, n);
-        // TODO: Scatter
-
         // Process 0 produces the b
         fullfillArrayWithRandomNumbers(b, n);
     }
-    // Process 0 sends b to everyone
-
+    // Process 0 sends a_partial to everyone
     MPI_Scatter(a, n * n / world_size, MPI_DOUBLE, a_partial, n * n / world_size, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    // Process 0 sends b to everyone
     MPI_Bcast(b, n, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-    MPI_Barrier(MPI_COMM_WORLD);
-    if (taskid == 1)
-    {
-        printf("a_partial:\n");
-        print_2d_arr(a, n / world_size, n);
-    }
 
     MPI_Barrier(MPI_COMM_WORLD);
     double time_start = MPI_Wtime();
-    // TODO: scatter matrix A
-    ParallelRowMatrixVectorMultiply(n, a, b, x, MPI_COMM_WORLD);
+    ParallelRowMatrixVectorMultiply(n, a_partial, b, x_partial, MPI_COMM_WORLD);
+    print_1d_arr(x_partial, n / world_size);
     double time_end = MPI_Wtime();
     double time = time_end - time_start;
 

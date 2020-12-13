@@ -170,14 +170,15 @@ int main(int argc, char *argv[])
     }
     srand(time(NULL) + taskid);
     int n = atoi(argv[1]);
+    int nOverK = n / world_size;
 
     double *a = allocarray1D(n * n);
     double *b = allocarray1D(n);
     double *x = allocarray1D(n);
-    double *x_partial = allocarray1D(n / world_size);
+    double *x_partial = allocarray1D(nOverK);
     double *xseq = allocarray1D(n);
 
-    double *a_partial = allocarray1D(n * n / world_size);
+    double *a_partial = allocarray1D(n * nOverK);
 
     if (a == NULL || b == NULL || x == NULL || xseq == NULL || x_partial == NULL)
     {
@@ -196,16 +197,17 @@ int main(int argc, char *argv[])
         fullfillArrayWithRandomNumbers(b, n);
     }
     // Process 0 sends a_partial to everyone
-    MPI_Scatter(a, n * n / world_size, MPI_DOUBLE, a_partial, n * n / world_size, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    MPI_Scatter(a, n * nOverK, MPI_DOUBLE, a_partial, n * nOverK, MPI_DOUBLE, 0, MPI_COMM_WORLD);
     // Process 0 sends b to everyone
     MPI_Bcast(b, n, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
     MPI_Barrier(MPI_COMM_WORLD);
     double time_start = MPI_Wtime();
     ParallelRowMatrixVectorMultiply(n, a_partial, b, x_partial, MPI_COMM_WORLD);
-    print_1d_arr(x_partial, n / world_size);
     double time_end = MPI_Wtime();
     double time = time_end - time_start;
+
+    MPI_Gather(x_partial, nOverK, MPI_DOUBLE, x, nOverK, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
     SequentialMatrixMultiply(n, a, b, xseq);
     // check difference between x and xseq using OpenMP

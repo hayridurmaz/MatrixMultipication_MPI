@@ -237,11 +237,12 @@ int main(int argc, char *argv[])
 
     // Process 0 gathers x_partials to create x
     MPI_Gather(x_partial, nOverK, MPI_DOUBLE, x, nOverK, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-
+    // print_1d_arr(x, n);
     if (taskid == 0)
     {
         SequentialMatrixMultiply(n, a, b, xseq);
         // check difference between x and xseq using OpenMP
+        // print_1d_arr(xseq, n);
         double time_start_openmp = omp_get_wtime();
 
         double l2_norm = 0;
@@ -249,40 +250,41 @@ int main(int argc, char *argv[])
         size_t r = 0;
         double *diff_vector = allocarray1D(n);
         int nrepeat = 100000;
-        if (n != 64000)
-        {
-            for (r = 0; r < nrepeat; r++)
-            {
+//         if (n != 64000)
+//         {
+//             for (r = 0; r < nrepeat; r++)
+//             {
+// #pragma omp parallel
+//                 {
+//                     numberOfThreads = omp_get_num_threads();
+//                     for (i = 0; i < n; i++)
+//                     {
+//                         double local_diff = x[i] - xseq[i];
+//                         diff_vector[i] = local_diff;
+//                         l2_norm += (local_diff * local_diff);
+//                     }
+//                 }
+//             }
+//         }
+//         else
+//         {
 #pragma omp parallel
-                {
-                    numberOfThreads = omp_get_num_threads();
-                    for (i = 0; i < n; i++)
-                    {
-                        double local_diff = x[i] - xseq[i];
-                        diff_vector[i] = local_diff;
-                        l2_norm += (local_diff * local_diff);
-                    }
-                }
+        {
+            numberOfThreads = omp_get_num_threads();
+            for (i = 0; i < n; i++)
+            {
+                double local_diff = x[i] - xseq[i];
+                diff_vector[i] = local_diff;
+                l2_norm += (local_diff * local_diff);
             }
         }
-        else
-        {
-#pragma omp parallel
-            {
-                numberOfThreads = omp_get_num_threads();
-                for (i = 0; i < n; i++)
-                {
-                    double local_diff = x[i] - xseq[i];
-                    diff_vector[i] = local_diff;
-                    l2_norm += (local_diff * local_diff);
-                }
-            }
-        }
+        // }
         l2_norm = sqrt(l2_norm);
         double time_end_openmp = omp_get_wtime();
         double openmp_exec_time = time_end_openmp - time_start_openmp;
         // print matrix size, number of processors, number of threads, time, time_openmp, L2 norm of difference of x and xseq (use %.12e while printing norm)
-        printf("%d %d %ld %f %f %.12e\n", n, world_size, numberOfThreads, parallel_exec_time, openmp_exec_time, l2_norm);
+        printf("%d %d %f %.12e\n", n, world_size, parallel_exec_time, l2_norm);
+        printf("%d %ld %f %.12e\n", n, numberOfThreads, openmp_exec_time, l2_norm);
     }
     MPI_Finalize();
     return 0;

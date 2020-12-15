@@ -222,7 +222,10 @@ int main(int argc, char *argv[])
         fullfillArrayWithRandomNumbers(b, n);
     }
     // Process 0 sends a_partial to everyone
-    MPI_Scatter(a, n * nOverK, MPI_DOUBLE, a_partial, n * nOverK, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    if (!(world_size == 1 && n == 64000))
+    {
+        MPI_Scatter(a, n * nOverK, MPI_DOUBLE, a_partial, n * nOverK, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    }
     // Process 0 sends b to everyone
     MPI_Bcast(b, n, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
@@ -243,15 +246,36 @@ int main(int argc, char *argv[])
 
         double l2_norm = 0;
         size_t numberOfThreads = 0;
+        size_t r = 0;
         double *diff_vector = allocarray1D(n);
-#pragma omp parallel
+        int nrepeat = 100000;
+        if (n != 64000)
         {
-            numberOfThreads = omp_get_num_threads();
-            for (i = 0; i < n; i++)
+            for (r = 0; r < nrepeat; r++)
             {
-                double local_diff = x[i] - xseq[i];
-                diff_vector[i] = local_diff;
-                l2_norm += (local_diff * local_diff);
+#pragma omp parallel
+                {
+                    numberOfThreads = omp_get_num_threads();
+                    for (i = 0; i < n; i++)
+                    {
+                        double local_diff = x[i] - xseq[i];
+                        diff_vector[i] = local_diff;
+                        l2_norm += (local_diff * local_diff);
+                    }
+                }
+            }
+        }
+        else
+        {
+#pragma omp parallel
+            {
+                numberOfThreads = omp_get_num_threads();
+                for (i = 0; i < n; i++)
+                {
+                    double local_diff = x[i] - xseq[i];
+                    diff_vector[i] = local_diff;
+                    l2_norm += (local_diff * local_diff);
+                }
             }
         }
         l2_norm = sqrt(l2_norm);

@@ -273,40 +273,39 @@ int main(int argc, char *argv[])
         double *diff_vector = allocarray1D(n);
         size_t nrepeat = 100000;
 
-//         if (n == 32000 && world_size==1)
-//         {
-//        printf("%d times repating\n",nrepeat);
-//            for (r = 0; r < nrepeat; r++)
-//             {
-//#pragma omp parallel
-//                {
-//                    numberOfThreads = omp_get_num_threads();
-//                    for (i = 0; i < n; i++)
-//                    {
-//                        double local_diff = x[i] - xseq[i];
-//                        diff_vector[i] = local_diff;
-//                        l2_norm += (local_diff * local_diff);
-//                    }
-//               }
-//               time_end_openmp = omp_get_wtime();
-//           openmp_exec_time = time_end_openmp - time_start_openmp;
-//
-//       }
-//       }
-//        else
-//        {
-#pragma omp parallel
+        if (world_size == 1)
         {
-            numberOfThreads = omp_get_num_threads();
-            for (i = 0; i < n; i++)
+            printf("%d times repating\n", nrepeat);
+
+#pragma omp parallel
             {
-                double local_diff = x[i] - xseq[i];
-                diff_vector[i] = local_diff;
-                l2_norm += (local_diff * local_diff);
+                numberOfThreads = omp_get_num_threads();
+                for (r = 0; r < nrepeat; r++)
+                {
+                    for (i = 0; i < n; i++)
+                    {
+                        double local_diff = x[i] - xseq[i];
+                        diff_vector[i] = local_diff;
+                        l2_norm += (local_diff * local_diff);
+                    }
+                }
+                time_end_openmp = omp_get_wtime();
+                openmp_exec_time = time_end_openmp - time_start_openmp;
             }
         }
-        //}
-        // }
+        else
+        {
+#pragma omp parallel
+            {
+                numberOfThreads = omp_get_num_threads();
+                for (i = 0; i < n; i++)
+                {
+                    double local_diff = x[i] - xseq[i];
+                    diff_vector[i] = local_diff;
+                    l2_norm += (local_diff * local_diff);
+                }
+            }
+        }
         l2_norm = sqrt(l2_norm);
         time_end_openmp = omp_get_wtime();
         openmp_exec_time = time_end_openmp - time_start_openmp;

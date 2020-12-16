@@ -97,7 +97,7 @@ size_t **fullfillArrayWithRandomNumbers(double *arr, size_t n)
 double *allocarray1D(size_t size)
 {
     double *array = calloc(size, sizeof(double));
-    totalMemUsage += size * sizeof(double);
+    totalMemUsage = totalMemUsage + size * sizeof(double);
     return array;
 }
 
@@ -272,7 +272,7 @@ int main(int argc, char *argv[])
         double time_end_openmp, openmp_exec_time, min_exec_time, max_exec_time, avg_exec_time;
         max_exec_time = 0;
         max_exec_time = 1000;
-        double l2_norm = 0;
+        long double l2_norm = 0;
         size_t numberOfThreads = 0;
         size_t r = 0;
         double *diff_vector = allocarray1D(n);
@@ -281,12 +281,13 @@ int main(int argc, char *argv[])
         if (world_size == 1)
         {
             printf("%d times repating\n", nrepeat);
-
 #pragma omp parallel
             {
                 numberOfThreads = omp_get_num_threads();
                 for (r = 0; r < nrepeat; r++)
                 {
+                    l2_norm = 0;
+                    printf("%d\n", numberOfThreads);
                     for (i = 0; i < n; i++)
                     {
                         double local_diff = x[i] - xseq[i];
@@ -294,8 +295,6 @@ int main(int argc, char *argv[])
                         l2_norm += (local_diff * local_diff);
                     }
                 }
-                time_end_openmp = omp_get_wtime();
-                openmp_exec_time = time_end_openmp - time_start_openmp;
             }
         }
         else
@@ -321,7 +320,8 @@ int main(int argc, char *argv[])
         }
         printf("MIN_AVG_MAX: %d %d %f %f %f\n", n, world_size, min_exec, max_exec, avg_exec);
         printf("MPI: %d %d %f %.12e\n", n, world_size, max_exec, l2_norm);
-        printf("TOTALMEMUSAGE: %d\n", totalMemUsage);
+        totalMemUsage = totalMemUsage / (1024 * 1024 * 1024);
+        printf("TOTALMEMUSAGE: %zu\n", totalMemUsage);
 
         //printf("process: %d %d %d %f %.12e\n", taskid, n, world_size, parallel_exec_time, l2_norm);
         //printf("%d %ld %f %.12e\n", n, numberOfThreads, openmp_exec_time, l2_norm);

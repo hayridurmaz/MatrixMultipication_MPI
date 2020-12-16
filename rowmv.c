@@ -281,27 +281,25 @@ int main(int argc, char *argv[])
         if (world_size == 1)
         {
             printf("%d times repating\n", nrepeat);
-#pragma omp parallel
+            // for (r = 0; r < nrepeat; r++)
+            // {
+            l2_norm = 0;
+#pragma omp parallel for private(i)
+            for (i = 0; i < n; i++)
             {
                 numberOfThreads = omp_get_num_threads();
-                for (r = 0; r < nrepeat; r++)
-                {
-                    l2_norm = 0;
-                    printf("%d\n", numberOfThreads);
-                    for (i = 0; i < n; i++)
-                    {
-                        double local_diff = x[i] - xseq[i];
-                        diff_vector[i] = local_diff;
-                        l2_norm += (local_diff * local_diff);
-                    }
-                }
+                double local_diff = x[i] - xseq[i];
+                diff_vector[i] = local_diff;
+                l2_norm += (local_diff * local_diff);
             }
+            //}
         }
         else
         {
 #pragma omp parallel
             {
                 numberOfThreads = omp_get_num_threads();
+#pragma omp parallel for private(i)
                 for (i = 0; i < n; i++)
                 {
                     double local_diff = x[i] - xseq[i];

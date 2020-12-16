@@ -9,7 +9,7 @@
 
 static size_t totalMemUsage = 0;
 
-int vectors_dot_prod(double *x, double *y, int n)
+size_t vectors_dot_prod(double *x, double *y, size_t n)
 {
     double res = 0.0;
     size_t i;
@@ -20,7 +20,7 @@ int vectors_dot_prod(double *x, double *y, int n)
     return res;
 }
 
-int vectors_dot_prod2(double *x, double *y, int n)
+size_t vectors_dot_prod2(double *x, double *y, size_t n)
 {
     size_t res = 0.0;
     size_t i = 0;
@@ -38,7 +38,7 @@ int vectors_dot_prod2(double *x, double *y, int n)
     return res;
 }
 
-void matrix_vector_mult(double **mat, double *vec, double *result, int rows, int cols)
+void matrix_vector_mult(double **mat, double *vec, double *result, size_t rows, size_t cols)
 { // in matrix form: result = mat * vec;
     size_t i;
     for (i = 0; i < rows; i++)
@@ -57,7 +57,7 @@ double get_random()
     return randomNumber;
 }
 
-void print_2d_arr(double *arr, int row, int col)
+void print_2d_arr(double *arr, size_t row, size_t col)
 {
     size_t i, j, index;
 
@@ -71,7 +71,7 @@ void print_2d_arr(double *arr, int row, int col)
         printf("\n");
     }
 }
-void print_1d_arr(double *arr, int row)
+void print_1d_arr(double *arr, size_t row)
 {
     size_t i;
     for (i = 0; i < row; i++)
@@ -81,7 +81,7 @@ void print_1d_arr(double *arr, int row)
     printf("\n");
 }
 
-int **fullfillArrayWithRandomNumbers(double *arr, int n)
+size_t **fullfillArrayWithRandomNumbers(double *arr, size_t n)
 {
     /*
     * Fulfilling the array with random numbers 
@@ -94,17 +94,17 @@ int **fullfillArrayWithRandomNumbers(double *arr, int n)
     return 0;
 }
 
-double *allocarray1D(int size)
+double *allocarray1D(size_t size)
 {
     double *array = calloc(size, sizeof(double));
-    totalMemUsage += size * sizeof(int);
+    totalMemUsage += size * sizeof(size_t);
     return array;
 }
 
-int ParallelRowMatrixVectorMultiply(int n, double *a, double *b, double *x, MPI_Comm comm)
+size_t ParallelRowMatrixVectorMultiply(size_t n, double *a, double *b, double *x, MPI_Comm comm)
 {
     size_t i, j;
-    int nlocal;
+    size_t nlocal;
     double *fb;
     int npes, myrank;
     MPI_Comm_size(comm, &npes);
@@ -125,10 +125,10 @@ int ParallelRowMatrixVectorMultiply(int n, double *a, double *b, double *x, MPI_
     return 0;
 }
 
-int ParallelRowMatrixVectorMultiply_WithoutAllgather(int n, double *a, double *b, double *x, MPI_Comm comm)
+size_t ParallelRowMatrixVectorMultiply_WithoutAllgather(size_t n, double *a, double *b, double *x, MPI_Comm comm)
 {
     size_t i, j;
-    int nlocal;
+    size_t nlocal;
     // double *fb;
     int npes, myrank;
     MPI_Comm_size(comm, &npes);
@@ -150,7 +150,7 @@ int ParallelRowMatrixVectorMultiply_WithoutAllgather(int n, double *a, double *b
     return 0;
 }
 
-int SequentialMatrixMultiply(int n, double *a, double *b, double *x)
+size_t SequentialMatrixMultiply(size_t n, double *a, double *b, double *x)
 {
     size_t i, j;
     for (i = 0; i < n; i++)
@@ -196,8 +196,8 @@ int main(int argc, char *argv[])
         return 0;
     }
     srand(time(NULL) + taskid);
-    int n = atoi(argv[1]);
-    int nOverK = n / world_size;
+    size_t n = atoi(argv[1]);
+    size_t nOverK = n / world_size;
 
     double *a = allocarray1D(n * n);
     double *b = allocarray1D(n);
@@ -235,39 +235,66 @@ int main(int argc, char *argv[])
     double time_end = MPI_Wtime();
     double parallel_exec_time = time_end - time_start;
 
+    double *exec_times = allocarray1D(world_size);
+    // Process 0 gathers x_partials to create x
+    MPI_Gather(&parallel_exec_time, 1, MPI_DOUBLE, exec_times, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    // print_1d_arr(x, n);
+
     // Process 0 gathers x_partials to create x
     MPI_Gather(x_partial, nOverK, MPI_DOUBLE, x, nOverK, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-    // print_1d_arr(x, n);
     if (taskid == 0)
     {
         SequentialMatrixMultiply(n, a, b, xseq);
         // check difference between x and xseq using OpenMP
-        // print_1d_arr(xseq, n);
-        double time_start_openmp = omp_get_wtime();
+        //print_1d_arr(exec_times, world_size);
+        double max_exec, min_exec, avg_exec;
+        min_exec = 1000;
+        for (i = 0; i < world_size; i++)
+        {
+            if (max_exec < exec_times[i])
+            {
+                max_exec = exec_times[i];
+            }
+            if (min_exec > exec_times[i])
+            {
+                min_exec = exec_times[i];
+            }
+            avg_exec += exec_times[i];
+        }
+        avg_exec = avg_exec / world_size;
 
+        double time_start_openmp = omp_get_wtime();
+        double time_end_openmp, openmp_exec_time, min_exec_time, max_exec_time, avg_exec_time;
+        max_exec_time = 0;
+        max_exec_time = 1000;
         double l2_norm = 0;
         size_t numberOfThreads = 0;
         size_t r = 0;
         double *diff_vector = allocarray1D(n);
-        int nrepeat = 100000;
-//         if (n != 64000)
+        size_t nrepeat = 100000;
+
+//         if (n == 32000 && world_size==1)
 //         {
-//             for (r = 0; r < nrepeat; r++)
+//        printf("%d times repating\n",nrepeat);
+//            for (r = 0; r < nrepeat; r++)
 //             {
-// #pragma omp parallel
-//                 {
-//                     numberOfThreads = omp_get_num_threads();
-//                     for (i = 0; i < n; i++)
-//                     {
-//                         double local_diff = x[i] - xseq[i];
-//                         diff_vector[i] = local_diff;
-//                         l2_norm += (local_diff * local_diff);
-//                     }
-//                 }
-//             }
-//         }
-//         else
-//         {
+//#pragma omp parallel
+//                {
+//                    numberOfThreads = omp_get_num_threads();
+//                    for (i = 0; i < n; i++)
+//                    {
+//                        double local_diff = x[i] - xseq[i];
+//                        diff_vector[i] = local_diff;
+//                        l2_norm += (local_diff * local_diff);
+//                    }
+//               }
+//               time_end_openmp = omp_get_wtime();
+//           openmp_exec_time = time_end_openmp - time_start_openmp;
+//
+//       }
+//       }
+//        else
+//        {
 #pragma omp parallel
         {
             numberOfThreads = omp_get_num_threads();
@@ -278,13 +305,21 @@ int main(int argc, char *argv[])
                 l2_norm += (local_diff * local_diff);
             }
         }
+        //}
         // }
         l2_norm = sqrt(l2_norm);
-        double time_end_openmp = omp_get_wtime();
-        double openmp_exec_time = time_end_openmp - time_start_openmp;
+        time_end_openmp = omp_get_wtime();
+        openmp_exec_time = time_end_openmp - time_start_openmp;
         // print matrix size, number of processors, number of threads, time, time_openmp, L2 norm of difference of x and xseq (use %.12e while printing norm)
-        printf("%d %d %f %.12e\n", n, world_size, parallel_exec_time, l2_norm);
-        printf("%d %ld %f %.12e\n", n, numberOfThreads, openmp_exec_time, l2_norm);
+        if (world_size == 1)
+        {
+            printf("OPENMP: %d %ld %f %.12e\n", n, numberOfThreads, openmp_exec_time, l2_norm);
+        }
+        printf("MIN_AVG_MAX: %d %d %f %f %f\n", n, world_size, min_exec, max_exec, avg_exec);
+        printf("MPI: %d %d %f %.12e\n", n, world_size, max_exec, l2_norm);
+
+        //printf("process: %d %d %d %f %.12e\n", taskid, n, world_size, parallel_exec_time, l2_norm);
+        //printf("%d %ld %f %.12e\n", n, numberOfThreads, openmp_exec_time, l2_norm);
     }
     MPI_Finalize();
     return 0;

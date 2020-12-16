@@ -5,6 +5,7 @@
 #SBATCH --nodes=4
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=36
+#SBATCH --mem-per-cpu=10000
 #SBATCH --partition=cpu
 #SBATCH --output=4_hayridurmaz-rowmv.out
 ###################################################################################################

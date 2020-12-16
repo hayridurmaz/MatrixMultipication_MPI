@@ -97,7 +97,7 @@ size_t **fullfillArrayWithRandomNumbers(double *arr, size_t n)
 double *allocarray1D(size_t size)
 {
     double *array = calloc(size, sizeof(double));
-    totalMemUsage += size * sizeof(size_t);
+    totalMemUsage += size * sizeof(double);
     return array;
 }
 
@@ -125,8 +125,12 @@ size_t ParallelRowMatrixVectorMultiply(size_t n, double *a, double *b, double *x
     return 0;
 }
 
-size_t ParallelRowMatrixVectorMultiply_WithoutAllgather(size_t n, double *a, double *b, double *x, MPI_Comm comm)
+size_t ParallelRowMatrixVectorMultiply_WithoutAllgather(size_t n, double *a, double *b, double *x_partial, double *x, MPI_Comm comm)
 {
+
+    // Process 0 sends b to everyone
+    MPI_Bcast(b, n, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+
     size_t i, j;
     size_t nlocal;
     // double *fb;
@@ -138,15 +142,18 @@ size_t ParallelRowMatrixVectorMultiply_WithoutAllgather(size_t n, double *a, dou
     // MPI_Allgather(b, nlocal, MPI_DOUBLE, fb, nlocal, MPI_DOUBLE, comm);
     for (i = 0; i < nlocal; i++)
     {
-        x[i] = 0.0;
+        x_partial[i] = 0.0;
         for (j = 0; j < n; j++)
         {
             size_t index = i * n + j;
             // printf("%f x %f\n", a[index], b[j]);
-            x[i] += a[index] * b[j];
+            x_partial[i] += a[index] * b[j];
         }
     }
     // free(b);
+
+    // Process 0 gathers x_partials to create x
+    MPI_Gather(x_partial, nlocal, MPI_DOUBLE, x, nlocal, MPI_DOUBLE, 0, MPI_COMM_WORLD);
     return 0;
 }
 
@@ -221,17 +228,16 @@ int main(int argc, char *argv[])
         // Process 0 produces the b
         fullfillArrayWithRandomNumbers(b, n);
     }
+
     // Process 0 sends a_partial to everyone
     if (!(world_size == 1 && n == 64000))
     {
         MPI_Scatter(a, n * nOverK, MPI_DOUBLE, a_partial, n * nOverK, MPI_DOUBLE, 0, MPI_COMM_WORLD);
     }
-    // Process 0 sends b to everyone
-    MPI_Bcast(b, n, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
     MPI_Barrier(MPI_COMM_WORLD);
     double time_start = MPI_Wtime();
-    ParallelRowMatrixVectorMultiply_WithoutAllgather(n, a_partial, b, x_partial, MPI_COMM_WORLD);
+    ParallelRowMatrixVectorMultiply_WithoutAllgather(n, a_partial, b, x_partial, x, MPI_COMM_WORLD);
     double time_end = MPI_Wtime();
     double parallel_exec_time = time_end - time_start;
 
@@ -240,13 +246,12 @@ int main(int argc, char *argv[])
     MPI_Gather(&parallel_exec_time, 1, MPI_DOUBLE, exec_times, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
     // print_1d_arr(x, n);
 
-    // Process 0 gathers x_partials to create x
-    MPI_Gather(x_partial, nOverK, MPI_DOUBLE, x, nOverK, MPI_DOUBLE, 0, MPI_COMM_WORLD);
     if (taskid == 0)
     {
         SequentialMatrixMultiply(n, a, b, xseq);
         // check difference between x and xseq using OpenMP
         //print_1d_arr(exec_times, world_size);
+        // print_1d_arr(xseq, n);
         double max_exec, min_exec, avg_exec;
         min_exec = 1000;
         for (i = 0; i < world_size; i++)
@@ -316,6 +321,7 @@ int main(int argc, char *argv[])
         }
         printf("MIN_AVG_MAX: %d %d %f %f %f\n", n, world_size, min_exec, max_exec, avg_exec);
         printf("MPI: %d %d %f %.12e\n", n, world_size, max_exec, l2_norm);
+        printf("TOTALMEMUSAGE: %d\n", totalMemUsage);
 
         //printf("process: %d %d %d %f %.12e\n", taskid, n, world_size, parallel_exec_time, l2_norm);
         //printf("%d %ld %f %.12e\n", n, numberOfThreads, openmp_exec_time, l2_norm);

@@ -134,67 +134,31 @@ int main(int argc, char *argv[])
     size_t nOverK = n /* / world_size */;
 
     double *a = allocarray1D(n * n);
-    double *b = allocarray1D(n);
-    double *x = allocarray1D(n);
-    double *x_partial = allocarray1D(nOverK);
-    double *xseq = allocarray1D(n);
+    double *b = allocarray1D(n * n);
+    double *x = allocarray1D(n * n);
 
-    double *a_partial = allocarray1D(n * nOverK);
-
-    if (a == NULL || b == NULL || x == NULL || xseq == NULL || x_partial == NULL)
+    if (a == NULL || b == NULL || x == NULL)
     {
         printf("Allocation failed\n");
         return 0;
     }
-    // Process 0 creates A matrix.
-    // if (taskid == 0)
-    // {
-    //     fullfillArrayWithRandomNumbers(a, n * n);
-    //     // Process 0 produces the b
-    //     fullfillArrayWithRandomNumbers(b, n);
-    // }
 
-    // Process 0 sends a_partial to everyone
-    // if (!(world_size == 1 && n == 64000))
-    // {
-    //     MPI_Scatter(a, n * nOverK, MPI_DOUBLE, a_partial, n * nOverK, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-    // }
+    fullfillArrayWithRandomNumbers(a, n * n);
+    fullfillArrayWithRandomNumbers(b, n * n);
 
-    SequentialMatrixMultiply(n, a, b, xseq);
-    // check difference between x and xseq using OpenMP
-    //print_1d_arr(exec_times, world_size);
-    // print_1d_arr(xseq, n);
-    double max_exec, min_exec, avg_exec;
-    min_exec = 1000;
-
-    avg_exec = avg_exec / world_size;
-
-    double time_end_openmp, openmp_exec_time, min_exec_time, max_exec_time, avg_exec_time;
-    max_exec_time = 0;
-    max_exec_time = 1000;
-    long double l2_norm = 0;
+    double time_end_openmp, openmp_exec_time;
     size_t numberOfThreads = 0;
     size_t r = 0;
     double *diff_vector = allocarray1D(n);
-    size_t nrepeat = 100000;
     double time_start_openmp = omp_get_wtime();
     if (world_size == 1)
     {
-        printf("%d times repating\n", nrepeat);
-#pragma omp parallel reduction(+ \
-                               : l2_norm)
+#pragma omp parallel
         {
             numberOfThreads = omp_get_num_threads();
-            for (int r = 0; r < nrepeat; r++)
-            {
-                l2_norm = 0;
 #pragma omp for
-                for (int i = 0; i < n; i++)
-                {
-                    double local_diff = x[i] - xseq[i];
-                    diff_vector[i] = local_diff;
-                    l2_norm += (local_diff * local_diff);
-                }
+            for (int i = 0; i < n; i++)
+            {
             }
         }
     }
@@ -206,22 +170,15 @@ int main(int argc, char *argv[])
 #pragma omp parallel for private(i)
             for (i = 0; i < n; i++)
             {
-                double local_diff = x[i] - xseq[i];
-                diff_vector[i] = local_diff;
-                l2_norm += (local_diff * local_diff);
             }
         }
     }
-    l2_norm = sqrt(l2_norm);
     time_end_openmp = omp_get_wtime();
     openmp_exec_time = time_end_openmp - time_start_openmp;
     // print matrix size, number of processors, number of threads, time, time_openmp, L2 norm of difference of x and xseq (use %.12e while printing norm)
-    if (world_size == 1)
-    {
-        printf("OPENMP: %d %ld %f %.12e\n", n, numberOfThreads, openmp_exec_time, openmp_exec_time, l2_norm);
-    }
-    printf("MIN_AVG_MAX: %d %d %f %f %f\n", n, world_size, min_exec, max_exec, avg_exec);
-    printf("MPI: %d %d %f %.12Lf %.12e\n", n, world_size, max_exec, l2_norm, l2_norm);
+    // printf("OPENMP: %d %ld %f %.12e\n", n, numberOfThreads, openmp_exec_time, openmp_exec_time, l2_norm);
+    // printf("MIN_AVG_MAX: %d %d %f %f %f\n", n, world_size, min_exec, max_exec, avg_exec);
+    // printf("MPI: %d %d %f %.12Lf %.12e\n", n, world_size, max_exec, l2_norm, l2_norm);
     totalMemUsage = totalMemUsage / (1024 * 1024 * 1024);
     printf("TOTALMEMUSAGE: %zu\n", totalMemUsage);
 

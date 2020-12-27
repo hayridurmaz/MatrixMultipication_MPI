@@ -151,14 +151,59 @@ int main(int argc, char *argv[])
     size_t r = 0;
     double *diff_vector = allocarray1D(n);
     double time_start_openmp = omp_get_wtime();
+    double temp = 0;
+    for (int jj = 0; jj < n; jj += n)
+    {
+        for (int kk = 0; kk < n; kk += n)
+        {
+            for (int i = 0; i < n; i++)
+            {
+                for (int j = jj; j < ((jj + n) > n ? n : (jj + n)); j++)
+                {
+                    temp = 0;
+                    for (int k = kk; k < ((kk + n) > n ? n : (kk + n)); k++)
+                    {
+                        size_t i_k = i * n + k;
+                        size_t k_j = k * n + j;
+                        temp += a[i_k] * b[k_j];
+                    }
+                    size_t i_j = i * n + j;
+                    x[i_j] += temp;
+                }
+            }
+        }
+    }
+
+    print_2d_arr(a, n, n);
+    print_2d_arr(b, n, n);
+    print_2d_arr(x, n, n);
+
     if (world_size == 1)
     {
 #pragma omp parallel
         {
             numberOfThreads = omp_get_num_threads();
 #pragma omp for
-            for (int i = 0; i < n; i++)
+            for (int jj = 0; jj < n; jj += n)
             {
+                // for (int kk = 0; kk < n; kk += n)
+                // {
+                //     for (int i = 0; i < n; i++)
+                //     {
+                //         for (int j = jj; j < ((jj + n) > n ? n : (jj + n)); j++)
+                //         {
+                //             temp = 0;
+                //             for (int k = kk; k < ((kk + n) > n ? n : (kk + n)); k++)
+                //             {
+                //                 size_t i_k = i * n + k;
+                //                 size_t k_j = k * n + j;
+                //                 temp += a[i_k] * b[k_j];
+                //             }
+                //             size_t i_j = i * n + j;
+                //             x[i_j] += temp;
+                //         }
+                //     }
+                // }
             }
         }
     }
@@ -176,7 +221,7 @@ int main(int argc, char *argv[])
     time_end_openmp = omp_get_wtime();
     openmp_exec_time = time_end_openmp - time_start_openmp;
     // print matrix size, number of processors, number of threads, time, time_openmp, L2 norm of difference of x and xseq (use %.12e while printing norm)
-    // printf("OPENMP: %d %ld %f %.12e\n", n, numberOfThreads, openmp_exec_time, openmp_exec_time, l2_norm);
+    printf("OPENMP: %d %ld %f\n", n, numberOfThreads, openmp_exec_time, openmp_exec_time);
     // printf("MIN_AVG_MAX: %d %d %f %f %f\n", n, world_size, min_exec, max_exec, avg_exec);
     // printf("MPI: %d %d %f %.12Lf %.12e\n", n, world_size, max_exec, l2_norm, l2_norm);
     totalMemUsage = totalMemUsage / (1024 * 1024 * 1024);

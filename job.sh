@@ -17,9 +17,10 @@ make
 #cat /proc/cpuinfo
 export OMP_PROC_BIND=true
 export OMP_PLACES=cores
+export NB=256
 for N in 2048 4096 8192 16384; do
         for nthreads in 1 2 4 8 16 32; do
                 export OMP_NUM_THREADS=$nthreads
-                srun  -n 1 ./rowmv -n $N -nb 256
+                srun  -n 1 ./rowmv -n $N -nb $NB
         done
 done

@@ -3,6 +3,7 @@
 #include <time.h>
 #include <omp.h>
 #include <math.h>
+#include <string.h>
 
 #define MATSIZE 2000
 
@@ -167,21 +168,35 @@ void BlockMatrixMultiplication(int n, double *a, double *b, double *c)
 
 int main(int argc, char *argv[])
 {
-    // Global declerations
-    size_t i;
+    // Global declerations and initilization works
+    size_t i, N, NB;
     int world_size = 0;
+    double time_start_openmp, time_end_openmp, openmp_exec_time;
+    srand(time(NULL));
 
-    if (argc != 2)
+    // Parsing program arguments
+    if (argc != 5)
     {
-
-        printf("Usage: %s <N>\n", argv[0]);
-
+        printf("Usage: %s -n <N> -nb <NB>\n", argv[0]);
         return 0;
     }
-    srand(time(NULL));
-    size_t n = atoi(argv[1]);
-    size_t nOverK = n /* / world_size */;
 
+    for (size_t j = 0; j < 5; j++)
+    {
+        if (strcmp(argv[j], "-n") == 0)
+        {
+            N = atoi(argv[j + 1]);
+        }
+        if (strcmp(argv[j], "-nb") == 0)
+        {
+            NB = atoi(argv[j + 1]);
+        }
+    }
+
+    size_t n = N;
+    printf("Runing with N=%d and NB=%d\n", n, NB);
+
+    //Array allocations
     double *a = allocarray1D(n * n);
     double *b = allocarray1D(n * n);
     double *x = allocarray1D(n * n);
@@ -192,26 +207,23 @@ int main(int argc, char *argv[])
         return 0;
     }
 
+    // Array filling
     fullfillArrayWithRandomNumbers(a, n * n);
     fullfillArrayWithRandomNumbers(b, n * n);
 
-    double time_end_openmp, openmp_exec_time;
-    size_t r = 0;
-    double *diff_vector = allocarray1D(n);
-    double time_start_openmp = omp_get_wtime();
-    double temp = 0;
+    // Muliplying matrices
+    time_start_openmp = omp_get_wtime();
     BlockMatrixMultiplication(n, a, b, x);
-
     time_end_openmp = omp_get_wtime();
+
+    // Execution time calculations
     openmp_exec_time = time_end_openmp - time_start_openmp;
+
     // print matrix size, number of processors, number of threads, time, time_openmp, L2 norm of difference of x and xseq (use %.12e while printing norm)
     printf("OPENMP: %d %ld %f\n", n, numberOfThreads, openmp_exec_time, openmp_exec_time);
-    // printf("MIN_AVG_MAX: %d %d %f %f %f\n", n, world_size, min_exec, max_exec, avg_exec);
-    // printf("MPI: %d %d %f %.12Lf %.12e\n", n, world_size, max_exec, l2_norm, l2_norm);
+
+    // Memory usage calculation (in terms of Gigabytes)
     totalMemUsage = totalMemUsage / (1024 * 1024 * 1024);
     printf("TOTALMEMUSAGE: %zu\n", totalMemUsage);
-
-    //printf("process: %d %d %d %f %.12e\n", taskid, n, world_size, parallel_exec_time, l2_norm);
-    //printf("%d %ld %f %.12e\n", n, numberOfThreads, openmp_exec_time, l2_norm);
     return 0;
 }

@@ -297,10 +297,12 @@ int main(int argc, char *argv[])
     fullfillArrayWithRandomNumbers_2D_ArrayOfArrays(a, n, n);
     fullfillArrayWithRandomNumbers_2D_ArrayOfArrays(b, n, n);
 
-    // printf("A:\n");
-    // print_2D_ArrayOfArrays(a, n, n);
-    // printf("b:\n");
-    // print_2D_ArrayOfArrays(b, n, n);
+#ifdef DEBUG
+    printf("A:\n");
+    print_2D_ArrayOfArrays(a, n, n);
+    printf("b:\n");
+    print_2D_ArrayOfArrays(b, n, n);
+#endif
 
     SequentialMatrixMultiply_ArrayOfArrays(n, a, b, x_seq);
 
@@ -309,11 +311,12 @@ int main(int argc, char *argv[])
     BlockMatrixMultiply_2(n, a, b, x, NB);
     time_end_openmp = omp_get_wtime();
 
+#ifdef DEBUG
     printf("\nX:\n");
-    // print_2D_ArrayOfArrays(x, n, n);
-
+    print_2D_ArrayOfArrays(x, n, n);
     printf("\nX_seq:\n");
-    // print_2D_ArrayOfArrays(x_seq, n, n);
+    print_2D_ArrayOfArrays(x_seq, n, n);
+#endif
 
     // Execution time calculations
     openmp_exec_time = time_end_openmp - time_start_openmp;

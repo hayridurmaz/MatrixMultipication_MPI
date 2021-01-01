@@ -82,7 +82,7 @@ void print_1d_arr(double *arr, size_t row)
     printf("\n");
 }
 
-size_t **fullfillArrayWithRandomNumbers(double *arr, size_t n)
+int fullfillArrayWithRandomNumbers(double *arr, size_t n)
 {
     /*
     * Fulfilling the array with random numbers 
@@ -102,6 +102,50 @@ double *allocarray1D(size_t size)
     return array;
 }
 
+double **allocarray_2D_ArrayOfArrays(int row, int col)
+{
+    double **array = malloc(row * sizeof(double *));
+    size_t i, j;
+    for (i = 0; i < row; i++)
+    {
+        array[i] = malloc(col * sizeof(double));
+        totalMemUsage += col * sizeof(double);
+        // printf("col=%d - Size of array1[%d]=%d (%d)\n", col, i, sizeof(array1[i]), ((int *)(col * sizeof(int))));
+    }
+    totalMemUsage += row * sizeof(double *);
+
+    return array;
+}
+
+double **fullfillArrayWithRandomNumbers_2D_ArrayOfArrays(double **arr, double row, double col)
+{
+    /*
+    * Fulfilling the array with random numbers 
+    * */
+    size_t i, j;
+    for (i = 0; i < row; i++)
+    {
+        for (j = 0; j < col; j++)
+        {
+            arr[i][j] = get_random();
+        }
+    }
+    return arr;
+}
+
+void print_2D_ArrayOfArrays(double **arr, int row, int col)
+{
+    size_t i, j;
+    for (i = 0; i < row; i++)
+    {
+        for (j = 0; j < col; j++)
+        {
+            printf("%3f ", arr[i][j]);
+        }
+        printf("\n");
+    }
+}
+
 size_t SequentialMatrixMultiply(size_t n, double *a, double *b, double *x)
 {
     size_t i, j;
@@ -118,9 +162,8 @@ size_t SequentialMatrixMultiply(size_t n, double *a, double *b, double *x)
     return 0;
 }
 
-void BlockMatrixMultiplication(int n, double *a, double *b, double *c)
+void BlockMatrixMultiplication(int n, double **a, double **b, double **c, int B)
 {
-    int B = 8;
 
     // size_t i, j, k, i1, j1, k1;
     // for (i = 0; i < n; i += B)
@@ -154,11 +197,8 @@ void BlockMatrixMultiplication(int n, double *a, double *b, double *c)
                     for (int k = 0; k < MATRIX_SIZE; ++k)
                     {
                         numberOfThreads = omp_get_num_threads();
-                        size_t a_idx = (i + x) * n + k;
-                        size_t b_idx = k * n + (j + y);
-                        size_t c_idx = (i + x) * n + (j + y);
 #pragma omp critical
-                        c[c_idx] += a[a_idx] * b[b_idx];
+                        c[i][j] += a[i][k] * b[k][j];
                     }
                 }
             }
@@ -197,9 +237,9 @@ int main(int argc, char *argv[])
     printf("Runing with N=%d and NB=%d\n", n, NB);
 
     //Array allocations
-    double *a = allocarray1D(n * n);
-    double *b = allocarray1D(n * n);
-    double *x = allocarray1D(n * n);
+    double **a = allocarray_2D_ArrayOfArrays(n, n);
+    double **b = allocarray_2D_ArrayOfArrays(n, n);
+    double **x = allocarray_2D_ArrayOfArrays(n, n);
 
     if (a == NULL || b == NULL || x == NULL)
     {
@@ -208,12 +248,17 @@ int main(int argc, char *argv[])
     }
 
     // Array filling
-    fullfillArrayWithRandomNumbers(a, n * n);
-    fullfillArrayWithRandomNumbers(b, n * n);
+    fullfillArrayWithRandomNumbers_2D_ArrayOfArrays(a, n, n);
+    fullfillArrayWithRandomNumbers_2D_ArrayOfArrays(b, n, n);
+
+    printf("A:\n");
+    print_2D_ArrayOfArrays(a, n, n);
+    printf("b:\n");
+    print_2D_ArrayOfArrays(b, n, n);
 
     // Muliplying matrices
     time_start_openmp = omp_get_wtime();
-    BlockMatrixMultiplication(n, a, b, x);
+    BlockMatrixMultiplication(n, a, b, x, NB);
     time_end_openmp = omp_get_wtime();
 
     // Execution time calculations

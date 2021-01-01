@@ -5,6 +5,8 @@
 #include <math.h>
 #include <string.h>
 
+#define min(x, y) (((x) < (y)) ? (x) : (y))
+
 static size_t totalMemUsage = 0;
 static size_t numberOfThreads = 0;
 
@@ -176,28 +178,33 @@ size_t SequentialMatrixMultiply_ArrayOfArrays(size_t n, double **a, double **b, 
     return 0;
 }
 
-void BlockMatrixMultiply_2(size_t n, double **a, double **b, double **c, size_t block)
+void BlockMatrixMultiply_2(size_t N, double **A, double **B, double **C, size_t block)
 {
-    size_t bi = 0;
-    size_t bj = 0;
-    size_t bk = 0;
-    size_t i = 0;
-    size_t j = 0;
-    size_t k = 0;
-    size_t blockSize = block;
-
-#pragma omp parallel for shared(a, b, c) private(i, j, k)
-    for (bi = 0; bi < n; bi += blockSize)
-        for (bj = 0; bj < n; bj += blockSize)
-            for (bk = 0; bk < n; bk += blockSize)
-                for (i = 0; i < blockSize; i++)
-                    for (j = 0; j < blockSize; j++)
-                        for (k = 0; k < blockSize; k++)
-                        {
-                            numberOfThreads = omp_get_num_threads();
-#pragma omp critical
-                            c[bi + i][bj + j] += a[bi + i][bk + k] * b[bk + k][bj + j];
-                        }
+    for (int i = 0; i < N; i++)
+    {
+        for (int j = 0; j < N; j++)
+        {
+            C[i][j] = 0;
+        }
+    }
+    for (int l2 = 0; l2 < N; l2 += block)
+    {
+        for (int j2 = 0; j2 < N; j2 += block)
+        {
+#pragma omp parallel for
+            for (int i = 0; i < N; i++)
+            {
+                numberOfThreads = omp_get_num_threads();
+                for (int l = l2; l < min(N, l2 + block); l++)
+                {
+                    for (int j = j2; j < min(N, j2 + block); j++)
+                    {
+                        C[i][j] += A[i][l] * B[l][j];
+                    }
+                }
+            }
+        }
+    }
 }
 
 void BlockMatrixMultiplication(int n, double **a, double **b, double **c, size_t nb)
@@ -290,10 +297,10 @@ int main(int argc, char *argv[])
     fullfillArrayWithRandomNumbers_2D_ArrayOfArrays(a, n, n);
     fullfillArrayWithRandomNumbers_2D_ArrayOfArrays(b, n, n);
 
-    printf("A:\n");
-    print_2D_ArrayOfArrays(a, n, n);
-    printf("b:\n");
-    print_2D_ArrayOfArrays(b, n, n);
+    // printf("A:\n");
+    // print_2D_ArrayOfArrays(a, n, n);
+    // printf("b:\n");
+    // print_2D_ArrayOfArrays(b, n, n);
 
     SequentialMatrixMultiply_ArrayOfArrays(n, a, b, x_seq);
 
@@ -303,10 +310,10 @@ int main(int argc, char *argv[])
     time_end_openmp = omp_get_wtime();
 
     printf("\nX:\n");
-    print_2D_ArrayOfArrays(x, n, n);
+    // print_2D_ArrayOfArrays(x, n, n);
 
     printf("\nX_seq:\n");
-    print_2D_ArrayOfArrays(x_seq, n, n);
+    // print_2D_ArrayOfArrays(x_seq, n, n);
 
     // Execution time calculations
     openmp_exec_time = time_end_openmp - time_start_openmp;

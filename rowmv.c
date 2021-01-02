@@ -93,6 +93,7 @@ void BlockMatrixMultiply(size_t N, double **A, double **B, double **C, size_t bl
     }
 #pragma omp parallel
     {
+#pragma omp master
         numberOfThreads = omp_get_num_threads();
         for (l2 = 0; l2 < N; l2 += block)
         {

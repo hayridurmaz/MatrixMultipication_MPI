@@ -91,19 +91,23 @@ void BlockMatrixMultiply(size_t N, double **A, double **B, double **C, size_t bl
             C[i][j] = 0;
         }
     }
-    for (l2 = 0; l2 < N; l2 += block)
+#pragma omp parallel
     {
-        for (j2 = 0; j2 < N; j2 += block)
+        numberOfThreads = omp_get_num_threads();
+        for (l2 = 0; l2 < N; l2 += block)
         {
-#pragma omp parallel for
-            for (i = 0; i < N; i++)
+            for (j2 = 0; j2 < N; j2 += block)
             {
-                numberOfThreads = omp_get_num_threads();
-                for (l = l2; l < min(N, l2 + block); l++)
+#pragma omp parallel for collapse(2) private(i, j, l)
+                for (i = 0; i < N; i++)
                 {
-                    for (j = j2; j < min(N, j2 + block); j++)
+
+                    for (l = l2; l < min(N, l2 + block); l++)
                     {
-                        C[i][j] += A[i][l] * B[l][j];
+                        for (j = j2; j < min(N, j2 + block); j++)
+                        {
+                            C[i][j] += A[i][l] * B[l][j];
+                        }
                     }
                 }
             }

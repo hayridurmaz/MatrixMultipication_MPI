@@ -5,14 +5,14 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=36
-#SBATCH --mem-per-cpu=10000
+#SBATCH --mem-per-cpu=32000
 #SBATCH --partition=cpu
-#SBATCH --output=1_hayridurmaz-rowmv.out
+#SBATCH --output=1_hayridurmaz-rowmv.txt
 ###################################################################################################
 
-module load gcc/9.2.0
-echo $HOSTNAME
-echo $SLURM_CPUS_PER_TASK
+module load gcc/10.2.0
+#echo $HOSTNAME
+#echo $SLURM_CPUS_PER_TASK
 make
 #cat /proc/cpuinfo
 export OMP_PROC_BIND=true

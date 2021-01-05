@@ -87,7 +87,7 @@ size_t SequentialMatrixMultiply_ArrayOfArrays(size_t n, double **a, double **b, 
     return 0;
 }
 
-void BlockMatrixMultiply(size_t N, double **A, double **B, double **C, size_t block)
+void WORKS_BUT_NOT_CORRECT_BlockMatrixMultiply(size_t N, double **A, double **B, double **C, size_t block)
 {
     size_t i, j, l2, j2, l;
     for (i = 0; i < N; i++)
@@ -114,6 +114,43 @@ void BlockMatrixMultiply(size_t N, double **A, double **B, double **C, size_t bl
                         for (j = j2; j < min(N, j2 + block); j++)
                         {
                             C[i][j] += A[i][l] * B[l][j];
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+void BlockMatrixMultiply(size_t N, double **A, double **B, double **C, size_t block)
+{
+    size_t i, j, l2, j2, l, i2;
+    size_t blockSize = N / block;
+    double **C_blocks = allocarray_2D_ArrayOfArrays(blockSize, blockSize);
+#pragma omp parallel
+    {
+        numberOfThreads = omp_get_num_threads();
+#pragma omp single
+        {
+            for (i2 = 0; i2 < blockSize; i2 += 1)
+            {
+                for (j2 = 0; j2 < blockSize; j2 += 1)
+                {
+                    for (l2 = 0; l2 < blockSize; l2 += 1)
+                    {
+                        memcpy(&C_blocks[0][0], &C[i2][j2], blockSize * blockSize * sizeof(C[i2][j2]));
+                        // printf("%f - %f \n", C_blocks[0][0], C[i2][j2]);
+#pragma omp task depend(out \
+                        : C)
+                        for (i = i2 * block; i < min(N, i2 * block + blockSize); i++)
+                        {
+                            for (l = l2 * block; l < min(N, l2 * block + blockSize); l++)
+                            {
+                                for (j = j2 * block; j < min(N, j2 * block + blockSize); j++)
+                                {
+                                    C[i][j] += A[i][l] * B[l][j];
+                                }
+                            }
                         }
                     }
                 }
